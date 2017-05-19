@@ -13,7 +13,6 @@ import java.security.cert.X509Certificate;
 import java.security.PrivateKey;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.StrSubstitutor;
 import org.apache.xml.security.exceptions.XMLSecurityException;
 import org.slf4j.Logger;

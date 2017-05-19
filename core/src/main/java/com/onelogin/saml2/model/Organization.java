@@ -132,6 +132,6 @@ public class Organization {
 	 * @return boolean true if organizations are equals
 	 */
 	public final Boolean equalsTo(Organization org) {
-		return orgName.equals(org.getOrgName()) && orgDisplayName.equals(org.getOrgDisplayName()) && orgUrl.equals(org.getOrgUrl());
+		return orgName.equals(org.getOrgName()) && orgDisplayName.equals(org.getOrgDisplayName()) && orgUrl.equals(org.getOrgUrl()) && orgLangAttribute.equals(org.getOrgLangAttribute());
 	}	
 }

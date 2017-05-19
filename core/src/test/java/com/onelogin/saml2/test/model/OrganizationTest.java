@@ -96,11 +96,14 @@ public class OrganizationTest {
 		Organization org3 = new Organization("SP Java 3", "SP Java Example", "http://sp.example.com");
 		Organization org4 = new Organization("SP Java", "SP Java Example 4", "http://sp.example.com");
 		Organization org5 = new Organization("SP Java", "SP Java Example", "http://sp.example.com/5");
-		Organization org6 = new Organization("SP Java 6", "SP Java Example 6", "http://sp.example.com/6");
+		Organization org6 = new Organization("SP Java", "SP Java Example", "http://sp.example.com", "en");
+		Organization org7 = new Organization("SP Java", "SP Java Example", "http://sp.example.com", "fr");
 
 		assertTrue(org.equalsTo(org2));
 		assertFalse(org.equalsTo(org3));
 		assertFalse(org.equalsTo(org4));
 		assertFalse(org.equalsTo(org5));
+		assertTrue(org.equalsTo(org6));
+		assertFalse(org.equalsTo(org7));
 	}
 }

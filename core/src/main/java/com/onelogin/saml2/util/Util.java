@@ -27,6 +27,7 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.TimeZone;
@@ -34,6 +35,7 @@ import java.util.UUID;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.Inflater;
+
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.xml.namespace.NamespaceContext;
@@ -845,6 +847,18 @@ public final class Util {
 		}
 		return false;
 	}
+	
+	public static boolean validateSign(final Document doc, final Collection<X509Certificate> certs, final String fingerprint,
+			   final String alg, final String xpath) {
+		try {
+		final NodeList signatures = query(doc, xpath);
+		return signatures.getLength() == 1 && validateSignNode(signatures.item(0), certs, fingerprint, alg);
+		} catch (XPathExpressionException e) {
+		LOGGER.warn("Failed to find signature nodes", e);		
+		}
+		return false;
+	}
+
 
 	/**
      * Validate signature (Metadata).
@@ -926,6 +940,37 @@ public final class Util {
 		}
 		return res;
 	}
+	
+	public static Boolean validateSignNode(Node signNode, Collection<X509Certificate> certs, String fingerprint, String alg) {
+		Boolean res = false;
+		try {
+			org.apache.xml.security.Init.init();
+
+			Element sigElement = (Element) signNode;
+			XMLSignature signature = new XMLSignature(sigElement, "", true);
+
+			if (certs != null && !certs.isEmpty()) {
+				for (X509Certificate cert : certs) {
+					res = signature.checkSignatureValue(cert);
+					if (res) {
+						continue;
+					}
+				}
+			} else {
+				KeyInfo keyInfo = signature.getKeyInfo();
+				if (keyInfo != null && keyInfo.containsX509Data()) {
+					X509Certificate providedCert = keyInfo.getX509Certificate();
+					if (fingerprint.equals(calculateX509Fingerprint(providedCert, alg))) {						
+						res = signature.checkSignatureValue(providedCert);
+					}
+				}
+			}
+		} catch (Exception e) {
+			LOGGER.warn("Error executing validateSignNode: " + e.getMessage(), e);
+		}
+		return res;
+	}
+	
 
 	/**
 	 * Decrypt an encrypted element.

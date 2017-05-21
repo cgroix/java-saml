@@ -5,8 +5,10 @@ import java.security.PrivateKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +53,7 @@ public class Saml2Settings {
 	private URL idpSingleLogoutServiceUrl = null;
 	private URL idpSingleLogoutServiceResponseUrl = null;
 	private String idpSingleLogoutServiceBinding = Constants.BINDING_HTTP_REDIRECT;
-	private X509Certificate idpx509cert = null;
+	private Set<X509Certificate> idpx509certs = new HashSet<X509Certificate>();
 	private String idpCertFingerprint = null;
 	private String idpCertFingerprintAlgorithm = "sha1";
 
@@ -191,11 +193,19 @@ public class Saml2Settings {
 	}
 
 	/**
-	 * @return the idpx509cert setting value
+	 * @return the first IP certificate
 	 */
 	public final X509Certificate getIdpx509cert() {
-		return idpx509cert;
+		return idpx509certs.isEmpty()?null:idpx509certs.iterator().next();
 	}
+
+	/**
+	 * @return the IP certificate setting values
+	 */
+	public final Set<X509Certificate> getIdpx509certs() {
+		return idpx509certs;
+	}
+
 
 	/**
 	 * @return the idpCertFingerprint setting value
@@ -498,7 +508,8 @@ public class Saml2Settings {
 	 *            the idpX509cert value to be set in X509Certificate format
 	 */
 	protected final void setIdpx509cert(X509Certificate idpX509cert) {
-		this.idpx509cert = idpX509cert;
+		this.idpx509certs.clear();
+		this.idpx509certs.add(idpX509cert);
 	}
 
 	/**

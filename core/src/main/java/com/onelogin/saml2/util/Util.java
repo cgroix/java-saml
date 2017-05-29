@@ -951,7 +951,12 @@ public final class Util {
 
 			if (certs != null && !certs.isEmpty()) {
 				for (X509Certificate cert : certs) {
-					res = signature.checkSignatureValue(cert);
+					try {
+						res = signature.checkSignatureValue(cert);
+					} catch (Exception e) {
+						LOGGER.warn("Error executing validateSignNode: " + e.getMessage(), e);
+						// noop, test following cert
+					}
 					if (res) {
 						continue;
 					}

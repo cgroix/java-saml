@@ -12,7 +12,12 @@ import com.onelogin.saml2.util.Constants;
 import com.onelogin.saml2.util.Util;
 
 import org.hamcrest.Matchers;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeConstants;
+import org.joda.time.DateTimeUtils;
+import org.joda.time.DateTimeZone;
 import org.joda.time.Instant;
+import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -49,6 +54,11 @@ public class AuthnResponseTest {
 
 	@Rule
 	public ExpectedException expectedEx = ExpectedException.none();
+	
+	@After
+	public void resetCorrectTime() {
+		DateTimeUtils.setCurrentMillisSystem();
+	}
 
 	/**
 	 * Tests the constructor of SamlResponse
@@ -2128,6 +2138,69 @@ public class AuthnResponseTest {
 		samlResponse = new SamlResponse(settings, newHttpRequest(samlResponseEncoded));
 		assertTrue(samlResponse.isValid());
 	}
+	
+	/**
+	 * Tests the isValid method of SamlResponse
+	 * Case: valid response from ADFS with two IP certificates set
+	 * and strict time bound
+	 *
+	 * @throws ValidationError
+	 * @throws SettingsException
+	 * @throws IOException
+	 * @throws SAXException
+	 * @throws ParserConfigurationException
+	 * @throws XPathExpressionException
+	 * @throws Error
+	 *
+	 * @see com.onelogin.saml2.authn.SamlResponse#isValid
+	 */
+	@Test
+	public void testADFSValid2Certs() throws IOException, Error, XPathExpressionException, ParserConfigurationException, SAXException, SettingsException, ValidationError {
+		Saml2Settings settings = new SettingsBuilder().fromFile("config/configtwocerts.properties").build();
+		String samlResponseEncoded = Util.getFileAsString("data/responses/adfs_resp_twocerts.base64");
+
+		settings.setStrict(false);
+		settings.setDebug(true);
+		SamlResponse samlResponse = new SamlResponse(settings, newHttpRequest(samlResponseEncoded));
+		assertTrue(samlResponse.isValid());
+		
+		DateTimeUtils.setCurrentMillisFixed((new DateTime(2017, DateTimeConstants.MAY, 26, 16, 11,  DateTimeZone.UTC)).getMillis());
+		settings.setStrict(true);
+		samlResponse = new SamlResponse(settings, newHttpRequest("https://sp.example.com/livedesk/creative/default/Login.html", samlResponseEncoded));
+		assertTrue(samlResponse.isValid());
+	}
+	
+	/**
+	 * Tests the isValid method of SamlResponse
+	 * Case: valid response from ADFS with reversed IP certificates set
+	 * and strict time bound
+	 *
+	 * @throws ValidationError
+	 * @throws SettingsException
+	 * @throws IOException
+	 * @throws SAXException
+	 * @throws ParserConfigurationException
+	 * @throws XPathExpressionException
+	 * @throws Error
+	 *
+	 * @see com.onelogin.saml2.authn.SamlResponse#isValid
+	 */
+	@Test
+	public void testADFSValid2Certsrev() throws IOException, Error, XPathExpressionException, ParserConfigurationException, SAXException, SettingsException, ValidationError {
+		Saml2Settings settings = new SettingsBuilder().fromFile("config/configtwocertsrev.properties").build();
+		String samlResponseEncoded = Util.getFileAsString("data/responses/adfs_resp_twocerts.base64");
+
+		settings.setStrict(false);
+		settings.setDebug(true);
+		SamlResponse samlResponse = new SamlResponse(settings, newHttpRequest(samlResponseEncoded));
+		assertTrue(samlResponse.isValid());
+		
+		DateTimeUtils.setCurrentMillisFixed((new DateTime(2017, DateTimeConstants.MAY, 26, 16, 11,  DateTimeZone.UTC)).getMillis());
+		settings.setStrict(true);
+		samlResponse = new SamlResponse(settings, newHttpRequest("https://sp.example.com/livedesk/creative/default/Login.html", samlResponseEncoded));
+		assertTrue(samlResponse.isValid());
+	}
+
 
 	/**
 	 * Tests the isValid method of SamlResponse

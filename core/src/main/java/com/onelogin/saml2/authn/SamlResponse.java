@@ -309,29 +309,6 @@ public class SamlResponse {
 				}
 
 
-//				boolean verified = false;
-//				Set<X509Certificate> certs = settings.getIdpx509certs();
-//				for (X509Certificate cert : certs) {
-//					try {
-//						cert.checkValidity();
-//					} catch (CertificateException e) {
-//						// this certificate is not valid, check others
-//						//continue;
-//					}
-//					
-//					if (hasSignedResponse && Util.validateSign(samlResponseDocument, cert, fingerprint, alg, Util.RESPONSE_SIGNATURE_XPATH)) {
-//						verified = true;
-//					}
-//
-//					final Document documentToCheckAssertion = encrypted ? decryptedDocument : samlResponseDocument;
-//					if (hasSignedAssertion && Util.validateSign(documentToCheckAssertion, cert, fingerprint, alg, Util.ASSERTION_SIGNATURE_XPATH)) {
-//						verified = true;
-//					}
-//				}
-//				
-//				if (!verified) {
-//					throw new ValidationError("Signature validation failed. SAML Response rejected", ValidationError.INVALID_SIGNATURE);
-//				}
 			}
 
 			LOGGER.debug("SAMLResponse validated --> " + samlResponseString);

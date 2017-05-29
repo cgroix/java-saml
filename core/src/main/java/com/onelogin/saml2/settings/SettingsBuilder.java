@@ -9,9 +9,11 @@ import java.security.PrivateKey;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -222,9 +224,8 @@ public class SettingsBuilder {
 		if (idpSingleLogoutServiceBinding != null)
 			saml2Setting.setIdpSingleLogoutServiceBinding(idpSingleLogoutServiceBinding);
 
-		X509Certificate idpX509cert = loadCertificateFromProp(IDP_X509CERT_PROPERTY_KEY);
-		if (idpX509cert != null)
-			saml2Setting.setIdpx509cert(idpX509cert);
+		Set<X509Certificate> idpX509certs = loadCertificateFromProp(IDP_X509CERT_PROPERTY_KEY);
+		saml2Setting.getIdpx509certs().addAll(idpX509certs);
 
 		String idpCertFingerprint = loadStringProperty(CERTFINGERPRINT_PROPERTY_KEY);
 		if (idpCertFingerprint != null)
@@ -387,9 +388,9 @@ public class SettingsBuilder {
 		if (spNameIDFormat != null && !spNameIDFormat.isEmpty())
 			saml2Setting.setSpNameIDFormat(spNameIDFormat);
 
-		X509Certificate spX509cert = loadCertificateFromProp(SP_X509CERT_PROPERTY_KEY);
-		if (spX509cert != null)
-			saml2Setting.setSpX509cert(spX509cert);
+		Set<X509Certificate> spX509certs = loadCertificateFromProp(SP_X509CERT_PROPERTY_KEY);
+		if (!spX509certs.isEmpty())
+			saml2Setting.setSpX509cert(spX509certs.iterator().next());
 
 		PrivateKey spPrivateKey = loadPrivateKeyFromProp(SP_PRIVATEKEY_PROPERTY_KEY);
 		if (spPrivateKey != null)
@@ -482,22 +483,26 @@ public class SettingsBuilder {
 	 *
 	 * @return the X509Certificate object
 	 */
-	protected X509Certificate loadCertificateFromProp(String propertyKey) {
+	protected Set<X509Certificate> loadCertificateFromProp(String propertyKey) {
+		Set<X509Certificate> certs = new HashSet<X509Certificate>();
 		String certString = prop.getProperty(propertyKey);
 
-		if (certString == null || certString.isEmpty()) {
-			return null;
-		} else {
-			try {
-				return Util.loadCert(certString);
-			} catch (CertificateException e) {
-				LOGGER.error("Error loading certificate from properties.", e);
-				return null;
-			} catch (UnsupportedEncodingException e) {
-				LOGGER.error("the certificate is not in correct format.", e);
-				return null;
+		if (certString != null && !certString.isEmpty()) {
+			String[] certStrings = certString.split(",");
+			for (String oneCertString : certStrings) {
+				try {
+					certs.add(Util.loadCert(oneCertString));
+				} catch (CertificateException e) {
+					LOGGER.error("Error loading certificate from properties.", e);
+					continue;
+				} catch (UnsupportedEncodingException e) {
+					LOGGER.error("the certificate is not in correct format.", e);
+					continue;
+				}
 			}
 		}
+		
+		return certs;
 	}
 
 	/**

@@ -781,6 +781,22 @@ public class UtilsTest {
 		assertThat(authNRequest.toString(), equalTo(Util.base64decodedInflated(deflatedEncodedAuthNRequest).toString()));
 	}
 
+	/**
+	 * Tests the base64decodedInflated method
+	 * Case: Long certs
+	 *
+	 * @throws IOException
+	 * @throws URISyntaxException
+	 *
+	 * @see com.onelogin.saml2.util.Util#base64decodedInflated
+	 */
+	@Test
+	public void testBase64decodedInflated2() throws URISyntaxException, IOException {
+		String samlResponse = Util.getFileAsString("data/responses/response_long_cert.xml");
+		String deflatedEncodedsamlResponse = Util.getFileAsString("data/responses/response_long_cert.xml.deflated.base64");
+
+		assertThat(samlResponse.toString(), equalTo(Util.base64decodedInflated(deflatedEncodedsamlResponse).toString()));
+	}
 	
 	/**
 	 * Tests the deflatedBase64encoded method
@@ -1707,7 +1723,25 @@ public class UtilsTest {
 		assertThat(nameIdEnc, containsString("http://www.w3.org/2001/04/xmlenc#aes128-cbc"));
 		assertThat(nameIdEnc, containsString("http://www.w3.org/2001/04/xmlenc#rsa-1_5"));
 	}
-	
+
+	/**
+	 * Tests the generateNameId method
+	 *
+	 * @throws IOException 
+	 * @throws URISyntaxException 
+	 * @throws CertificateException 
+	 *
+	 * @see com.onelogin.saml2.util.Util#generateNameId
+	 */
+	@Test
+	public void testGenerateNameIdWithoutFormat() throws URISyntaxException, IOException, CertificateException {
+        String nameIdValue = "ONELOGIN_ce998811003f4e60f8b07a311dc641621379cfde";
+        String nameId = Util.generateNameId(nameIdValue);
+
+        String expectedNameId = "<saml:NameID>ONELOGIN_ce998811003f4e60f8b07a311dc641621379cfde</saml:NameID>";
+        assertEquals(expectedNameId, nameId);        
+	}
+
 	/**
 	 * Tests the generateUniqueID method
 	 * 

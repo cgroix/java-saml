@@ -1,11 +1,13 @@
 # OneLogin's SAML Java Toolkit
 
-[![Build Status](https://travis-ci.org/onelogin/java-saml.svg?branch=v2.0.0)](https://travis-ci.org/onelogin/java-saml) [![Coverage Status](https://coveralls.io/repos/github/onelogin/java-saml/badge.svg?branch=v2.0.0)](https://coveralls.io/github/onelogin/java-saml?branch=v2.0.0)
+[![Build Status](https://travis-ci.org/onelogin/java-saml.svg?branch=master)](https://travis-ci.org/onelogin/java-saml) [![Coverage Status](https://coveralls.io/repos/github/onelogin/java-saml/badge.svg?branch=master)](https://coveralls.io/github/onelogin/java-saml?branch=master)
 
 Add SAML support to your Java applications using this library.
 Forget those complicated libraries and use that open source library provided and supported by OneLogin Inc.
 
-This is version 2.0.0, compatible with java6 / java7 / java8.
+Version 2.X.X, compatible with java7 / java8.
+
+We [introduced some incompatibilities](https://github.com/onelogin/java-saml/issues/90), that could be fixed and make it compatible with java6.
 
 Version 1.1.2 is considered to be deprecated. If you have used it, we strongly recommend that you migrate to the new version. 
 We rebuilt the toolkit on 2.0.0, so code/settings that you had been using in the previous version will no longer be compatible.
@@ -78,7 +80,7 @@ Install it as a maven dependecy:
   <dependency>
       <groupId>com.onelogin</groupId>
       <artifactId>java-saml</artifactId>
-      <version>2.0.0</version>
+      <version>2.2.0</version>
   </dependency>
 ```
 
@@ -114,7 +116,7 @@ also the [Java Cryptography Extension (JCE)](https://en.wikipedia.org/wiki/Java_
 * org.apache.maven.plugins:maven-enforcer-plugin
 
 For more info, open and read the different pom.xml files:
-[core/pom.xml](https://github.com/onelogin/java-saml/blob/v2.0.0/core/pom.xml), [toolkit/pom.xml](https://github.com/onelogin/java-saml/blob/v2.0.0/toolkit/pom.xml)
+[core/pom.xml](https://github.com/onelogin/java-saml/blob/v2.2.0/core/pom.xml), [toolkit/pom.xml](https://github.com/onelogin/java-saml/blob/v2.2.0/toolkit/pom.xml)
 
 ## Working with the github repository code and Eclipse.
 ### Get the toolkit.
@@ -176,6 +178,7 @@ At *java-saml-tookit-jspsample/src/main/resources* folder is the *onelogin.saml.
 #### Settings
 First of all we need to configure the toolkit. The SP's info, the IdP's info, and in some cases, configuration for advanced security issues, such as signatures and encryption.
 
+##### Properties File
 All the settings are defined in one unique file; by default, the Auth class loads a *onelogin.saml.properties* file with the Auth() method, but if we named it in a different way, we can use Auth(filename);
 
 Here are the list of properties to be defined on the settings file:
@@ -335,7 +338,27 @@ onelogin.saml2.organization.lang = en
 onelogin.saml2.contacts.technical.given_name = Technical Guy
 onelogin.saml2.contacts.technical.email_address = technical@example.com
 onelogin.saml2.contacts.support.given_name = Support Guy
-onelogin.saml2.contacts.support.email_address = support@@example.com
+onelogin.saml2.contacts.support.email_address = support@example.com
+```
+
+##### Dynamic Settings
+It is possible to build settings programatically. You can load your values from different sources such as files, databases, or generated values.
+
+The `SettingsBuilder` class exposes the method `fromValues(Map<String, Object> samlData)` which let you build your settings dynamically. The `key` strings are the same from the *Properties file*
+```java
+Map<String, Object> samlData = new HashMap<>();
+samlData.put("onelogin.saml2.sp.entityid", "http://localhost:8080/java-saml-tookit-jspsample/metadata.jsp");
+samlData.put("onelogin.saml2.sp.assertion_consumer_service.url", new URL("http://localhost:8080/java-saml-tookit-jspsample/acs.jsp"));
+samlData.put("onelogin.saml2.security.want_xml_validation",true);
+samlData.put("onelogin.saml2.sp.x509cert", myX509CertInstance);
+
+SettingsBuilder builder = new SettingsBuilder();
+Saml2Settings settings = builder.fromValues(samlData).build();
+```
+
+To instantiate the `Auth` class you write
+```java
+Auth auth = new Auth(settings, request, response);
 ```
 
 #### The HttpRequest
@@ -525,9 +548,9 @@ You should be able to workaround this by configuring your server so that it is a
 For Apache Tomcat this is done by setting the proxyName, proxyPort, scheme and secure attributes for the Connector. See [here](http://serverfault.com/questions/774300/ssl-offloading-from-apache-to-tomcat-get-overwritten-somewhere) for an example.
 
 
-### Reply attacks
+### Replay attacks
 
-In order to avoid reply attacks, you can store the ID of the SAML messages already processed, to avoid processing them twice. Since the Messages expires and will be invalidated due that fact, you don't need to store those IDs longer than the time frame that you currently accepting.
+In order to avoid replay attacks, you can store the ID of the SAML messages already processed, to avoid processing them twice. Since the Messages expires and will be invalidated due that fact, you don't need to store those IDs longer than the time frame that you currently accepting.
 
 Get the ID of the last processed message with the getLastMessageId method of the Auth object.
 

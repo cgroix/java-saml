@@ -2,7 +2,6 @@ package com.onelogin.saml2.settings;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.PrivateKey;
@@ -10,11 +9,14 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,18 +32,18 @@ import com.onelogin.saml2.util.Util;
  */ 
 public class SettingsBuilder {
 	/**
-     * Private property to construct a logger for this class.
-     */
+	 * Private property to construct a logger for this class.
+	 */
 	private static final Logger LOGGER = LoggerFactory.getLogger(SettingsBuilder.class);
 
 	/**
-     * Private property that contains the SAML settings
-     */
-	private Properties prop = new Properties();
+	 * Private property that contains the SAML settings
+	 */
+	private Map<String, Object> samlData = new LinkedHashMap<>();
 
 	/**
-     * Saml2Settings object
-     */
+	 * Saml2Settings object
+	 */
 	private Saml2Settings saml2Setting;
 
 	public final static String STRICT_PROPERTY_KEY = "onelogin.saml2.strict";
@@ -113,43 +115,27 @@ public class SettingsBuilder {
 	 * @throws IOException
 	 * @throws Error
 	 */
-	public SettingsBuilder fromFile(String propFileName) throws IOException, Error {
-		this.loadPropFile(propFileName);
-		return this;
-	}
+	public SettingsBuilder fromFile(String propFileName) throws Error {
 
-	/**
-	 * Loads the settings from the properties file
-	 *
-	 * @param propFileName
-	 *            the name of the file
-	 *
-	 * @throws IOException
-	 * @throws Error
-	 */
-	private void loadPropFile(String propFileName) throws IOException, Error {
-
-		InputStream inputStream = null;
-
-		try {
-			inputStream = getClass().getClassLoader().getResourceAsStream(propFileName);
+		ClassLoader classLoader = getClass().getClassLoader();
+		try (InputStream inputStream = classLoader.getResourceAsStream(propFileName)) {
 			if (inputStream != null) {
-				this.prop.load(inputStream);
-				LOGGER.debug("properties file " + propFileName + "loaded succesfully");
+				Properties prop = new Properties();
+				prop.load(inputStream);
+				parseProperties(prop);
+				LOGGER.debug("properties file '{}' loaded succesfully", propFileName);
 			} else {
 				String errorMsg = "properties file '" + propFileName + "' not found in the classpath";
 				LOGGER.error(errorMsg);
 				throw new Error(errorMsg, Error.SETTINGS_FILE_NOT_FOUND);
 			}
-		} finally {
-			try {
-				if (inputStream != null) {
-					inputStream.close();
-				}
-			} catch (IOException e) {
-				LOGGER.warn("properties file '"  + propFileName +  "' not closed properly.");
-			}
+		} catch (IOException e) {
+			String errorMsg = "properties file'" + propFileName + "' cannot be loaded.";
+			LOGGER.error(errorMsg, e);
+			throw new Error(errorMsg, Error.SETTINGS_FILE_NOT_FOUND);
 		}
+		
+		return this;
 	}
 
 	/**
@@ -161,18 +147,32 @@ public class SettingsBuilder {
 	 * @return the SettingsBuilder object with the settings loaded from the prop object
 	 */
 	public SettingsBuilder fromProperties(Properties prop) {
-	    this.prop = prop;
-	    return this;
+		parseProperties(prop);
+		return this;
 	}
 
+	/**
+	 * Loads the settings from mapped values. 
+	 *
+	 * @param values
+	 *            Mapped values. 
+	 *
+	 * @return the SettingsBuilder object with the settings loaded from the prop object
+	 */
+	public SettingsBuilder fromValues(Map<String, Object> samlData) {
+		if (samlData != null) {
+			this.samlData.putAll(samlData);
+		}
+		return this;
+	}
+	
 	/**
 	 * Builds the Saml2Settings object. Read the Properties object and set all the SAML settings
 	 * 
 	 * @return the Saml2Settings object with all the SAML settings loaded
 	 *
-	 * @throws IOException
 	 */
-	public Saml2Settings build() throws IOException {
+	public Saml2Settings build() {
 
 		saml2Setting = new Saml2Settings();
 		
@@ -328,7 +328,7 @@ public class SettingsBuilder {
 		URL orgUrl = loadURLProperty(ORGANIZATION_URL);
 		String orgLangAttribute = loadStringProperty(ORGANIZATION_LANG);
 
-		if ((orgName != null && !orgName.isEmpty()) || (orgDisplayName != null && !orgDisplayName.isEmpty()) || (orgUrl != null)) {
+		if (StringUtils.isNotBlank(orgName) || StringUtils.isNotBlank(orgDisplayName) || orgUrl != null) {
 			orgResult = new Organization(orgName, orgDisplayName, orgUrl, orgLangAttribute);
 		}
 
@@ -339,7 +339,7 @@ public class SettingsBuilder {
 	 * Loads the contacts settings from the properties file
 	 */
 	private List<Contact> loadContacts() {
-		List<Contact> contacts = new LinkedList<Contact>();
+		List<Contact> contacts = new LinkedList<>();
 
 		String technicalGn = loadStringProperty(CONTACT_TECHNICAL_GIVEN_NAME);
 		String technicalEmailAddress = loadStringProperty(CONTACT_TECHNICAL_EMAIL_ADDRESS);
@@ -406,11 +406,11 @@ public class SettingsBuilder {
 	 * @return the value
 	 */
 	private String loadStringProperty(String propertyKey) {
-		String propValue = prop.getProperty(propertyKey);
-		if (propValue != null) {
-			propValue = propValue.trim();
+		Object propValue = samlData.get(propertyKey);
+		if (isString(propValue)) {
+			return StringUtils.trimToNull((String) propValue);
 		}
-		return propValue;
+		return null;
 	}
 
 	/**
@@ -422,12 +422,15 @@ public class SettingsBuilder {
 	 * @return the value
 	 */
 	private Boolean loadBooleanProperty(String propertyKey) {
-		String booleanPropValue = prop.getProperty(propertyKey);
-		if (booleanPropValue != null) {
-			return Boolean.parseBoolean(booleanPropValue.trim());
-		} else {
-			return null;
+		Object propValue = samlData.get(propertyKey);
+		if (isString(propValue)) {
+			return Boolean.parseBoolean(((String) propValue).trim());
 		}
+		
+		if (propValue instanceof Boolean) {
+		    	return (Boolean) propValue;
+		}
+		return null;
 	}
 
 	/**
@@ -439,16 +442,19 @@ public class SettingsBuilder {
 	 * @return the value
 	 */
 	private List<String> loadListProperty(String propertyKey) {
-		String arrayPropValue = prop.getProperty(propertyKey);
-		if (arrayPropValue != null && !arrayPropValue.isEmpty()) {
-			String [] values = arrayPropValue.trim().split(",");
+		Object propValue = samlData.get(propertyKey);
+		if (isString(propValue)) {
+			String [] values = ((String) propValue).trim().split(",");
 			for (int i = 0; i < values.length; i++) {
 				values[i] = values[i].trim();
 			}
 			return Arrays.asList(values);
-		} else {
-			return null;
 		}
+		
+		if (propValue instanceof List) {
+			return (List<String>) propValue;
+		}
+		return null;
 	}
 
 	/**
@@ -461,18 +467,22 @@ public class SettingsBuilder {
 	 */
 	private URL loadURLProperty(String propertyKey) {
 
-		String urlPropValue = prop.getProperty(propertyKey);
+		Object propValue = samlData.get(propertyKey);
 
-		if (urlPropValue == null || urlPropValue.isEmpty()) {
-			return null;
-		} else {
+		if (isString(propValue)) {
 			try {
-				return new URL(urlPropValue.trim());
+				return new URL(((String) propValue).trim());
 			} catch (MalformedURLException e) {
-				LOGGER.error("'" + propertyKey + "' contains malformed url.", e);
+				LOGGER.error("'{}' contains malformed url.", propertyKey, e);
 				return null;
 			}
 		}
+
+		if (propValue instanceof URL) {
+			return (URL) propValue;
+		}
+		
+		return null;
 	}
 	
 	/**
@@ -485,21 +495,24 @@ public class SettingsBuilder {
 	 */
 	protected Set<X509Certificate> loadCertificateFromProp(String propertyKey) {
 		Set<X509Certificate> certs = new HashSet<X509Certificate>();
-		String certString = prop.getProperty(propertyKey);
-
-		if (certString != null && !certString.isEmpty()) {
-			String[] certStrings = certString.split(",");
-			for (String oneCertString : certStrings) {
-				try {
-					certs.add(Util.loadCert(oneCertString));
-				} catch (CertificateException e) {
-					LOGGER.error("Error loading certificate from properties.", e);
-					continue;
-				} catch (UnsupportedEncodingException e) {
-					LOGGER.error("the certificate is not in correct format.", e);
-					continue;
+		Object propValue = samlData.get(propertyKey);
+		if (isString(propValue)) {
+			String certString = (String) propValue;
+			if (certString != null && !certString.isEmpty()) {
+				String[] certStrings = certString.split(",");
+				for (String oneCertString : certStrings) {
+					try {
+						certs.add(Util.loadCert(oneCertString));
+					} catch (CertificateException e) {
+						LOGGER.error("Error loading certificate from properties.", e);
+						continue;
+					}
 				}
 			}
+		}
+
+		if ( propValue instanceof X509Certificate) {
+		    certs.add((X509Certificate)propValue);
 		}
 		
 		return certs;
@@ -549,18 +562,22 @@ public class SettingsBuilder {
 	 * @return the PrivateKey object
 	 */
 	protected PrivateKey loadPrivateKeyFromProp(String propertyKey) {
-		String keyString = prop.getProperty(propertyKey);
+		Object propValue = samlData.get(propertyKey);
 
-		if (keyString == null || keyString.isEmpty()) {
+		if (isString(propValue)) {
+		    try {
+			return Util.loadPrivateKey(((String) propValue).trim());
+		    } catch (Exception e) {
+			LOGGER.error("Error loading privatekey from properties.", e);
 			return null;
-		} else {
-			try {
-				return Util.loadPrivateKey(keyString);
-			} catch (Exception e) {
-				LOGGER.error("Error loading privatekey from properties.", e);
-				return null;
-			}
+		    }
 		}
+
+		if ( propValue instanceof PrivateKey) {
+		    	return (PrivateKey) propValue;
+		}
+		
+		return null;
 	}
 
 	/**
@@ -596,4 +613,15 @@ public class SettingsBuilder {
 		}
 	}
 	*/
+	private void parseProperties(Properties properties) {
+		if (properties != null) {
+			for (String propertyKey: properties.stringPropertyNames()) {
+				this.samlData.put(propertyKey, properties.getProperty(propertyKey));
+			}
+		}
+	}
+	
+	private boolean isString(Object propValue) {
+		return propValue instanceof String && StringUtils.isNotBlank((String) propValue);
+	}
 }
